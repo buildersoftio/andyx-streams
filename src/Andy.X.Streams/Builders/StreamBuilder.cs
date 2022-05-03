@@ -45,6 +45,7 @@ namespace Andy.X.Streams.Builders
                 .AndSubscriptionType(SubscriptionType.Shared)
                 .Build();
 
+            consumerStream.MessageReceived += ConsumerStream_MessageReceived;
 
             return this;
         }
