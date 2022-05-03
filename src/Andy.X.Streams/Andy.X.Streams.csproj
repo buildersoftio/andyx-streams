@@ -38,7 +38,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <PackageReference Include="Buildersoft.Andy.X.Client" Version="2.1.5-preview" />
+	  <PackageReference Include="Buildersoft.Andy.X.Client" Version="2.1.6-preview" />
 	  <PackageReference Include="Cortex.Collections" Version="1.0.0-preview11" />
 	</ItemGroup>
 
