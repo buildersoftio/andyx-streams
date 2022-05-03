@@ -36,15 +36,14 @@ namespace Andy.X.Streams.Builders
 
         public IFlowDesigner Stream<TIn>(string component, string topic)
         {
-            consumerStream = new Consumer<object>(_xClient)
-                .Name(_streamName)
-                .Component(component)
-                .Topic(topic)
-                .InitialPosition(InitialPosition.Earliest)
-                .SubscriptionType(SubscriptionType.Shared)
+            consumerStream = Consumer<object>
+                .CreateNewConsumer(_xClient)
+                .ForComponent(component)
+                .AndTopic(topic)
+                .WithName(_streamName)
+                .WithInitialPosition(InitialPosition.Earliest)
+                .AndSubscriptionType(SubscriptionType.Shared)
                 .Build();
-
-            consumerStream.MessageReceived += ConsumerStream_MessageReceived;
 
 
             return this;
@@ -58,11 +57,12 @@ namespace Andy.X.Streams.Builders
 
         public IStreamBuilder To<TOut>(string component, string topic)
         {
-            producerStream = new Producer<object>(_xClient)
-                .Name(_streamName)
-                .Component(component)
-                .Topic(topic)
-                .RetryProducing(true)
+            producerStream = Producer<object>
+                .CreateNewProducer(_xClient)
+                .ForComponent(component)
+                .AndTopic(topic)
+                .WithName(_streamName)
+                .RetryProducingIfFails()
                 .AddDefaultHeader("stream-version", "andyx-streams v2.1")
                 .Build();
 
@@ -86,7 +86,7 @@ namespace Andy.X.Streams.Builders
         public Stream Build()
         {
             producerStream.OpenAsync().Wait();
-            consumerStream.SubscribeAsync().Wait();
+            consumerStream.ConnectAsync().Wait();
 
             return new Stream();
         }
