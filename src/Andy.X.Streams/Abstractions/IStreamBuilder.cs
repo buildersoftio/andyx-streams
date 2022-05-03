@@ -2,6 +2,6 @@
 {
     public interface IStreamBuilder
     {
-        public void Build();
+        public Stream Build();
     }
 }

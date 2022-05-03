@@ -18,8 +18,6 @@ namespace Andy.X.Streams.Builders
 
         private Func<object, object> _funcMapper;
 
-
-
         private StreamBuilder(XClient xClient, string streamName)
         {
             _xClient = xClient;
@@ -85,10 +83,12 @@ namespace Andy.X.Streams.Builders
             }
         }
 
-        public void Build()
+        public Stream Build()
         {
             producerStream.OpenAsync().Wait();
             consumerStream.SubscribeAsync().Wait();
+
+            return new Stream();
         }
     }
 }
