@@ -20,16 +20,20 @@ namespace Andy.X.Streams.Builders
 
 
 
-        private StreamBuilder(IXClientFactory xClientFactory, string streamName)
+        private StreamBuilder(XClient xClient, string streamName)
         {
-            _xClient = xClientFactory.CreateClient();
+            _xClient = xClient;
             _streamName = streamName;
-            _logger = _xClient.GetClientConfiguration().Logging.GetLoggerFactory().CreateLogger<StreamBuilder>();
+            _logger = xClient.GetClientConfiguration().Logging.GetLoggerFactory().CreateLogger<StreamBuilder>();
         }
 
         public static StreamBuilder CreateNewStreamBuilder(IXClientFactory xClientFactory, string streamName)
         {
-            return new StreamBuilder(xClientFactory, streamName);
+            return new StreamBuilder(xClientFactory.CreateClient(), streamName);
+        }
+        public static StreamBuilder CreateNewStreamBuilder(XClient xClient, string streamName)
+        {
+            return new StreamBuilder(xClient, streamName);
         }
 
         public IFlowDesigner Stream<TIn>(string component, string topic)
