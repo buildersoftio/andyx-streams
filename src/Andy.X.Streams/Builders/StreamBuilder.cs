@@ -84,7 +84,7 @@ namespace Andy.X.Streams.Builders
             }
         }
 
-        public Stream Build()
+        public Stream Run()
         {
             producerStream.OpenAsync().Wait();
             consumerStream.ConnectAsync().Wait();
