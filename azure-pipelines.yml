@@ -16,7 +16,7 @@ variables:
   minor: 1
   patch: $[counter(variables['minor'], 0)] #this will reset when we bump minor
   #tNugetVersion: $(major).$(minor).0-preview$(patch)
-  NugetVersion: $(major).$(minor).0
+  NugetVersion: $(major).$(minor).$(patch)
 steps:
 - task: NuGetToolInstaller@1
 
