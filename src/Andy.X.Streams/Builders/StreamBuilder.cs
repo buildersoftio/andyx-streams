@@ -1,95 +1,238 @@
 ﻿using Andy.X.Client;
 using Andy.X.Client.Abstractions;
-using Andy.X.Client.Configurations;
+using Andy.X.Client.Abstractions.Consumers;
+using Andy.X.Client.Abstractions.XClients;
+using Andy.X.Client.Models;
 using Andy.X.Streams.Abstractions;
+using Andy.X.Streams.Models.Internal;
+using Andy.X.Streams.Settings;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Threading;
 
 namespace Andy.X.Streams.Builders
 {
-    public class StreamBuilder : IStreamBuilder, IStreamDesigner, IFlowDesigner, ISinkDesigner
+    public class StreamBuilder<TIn, TOut> : IStreamBuilder<TIn, TOut>, IStreamDesigner<TIn, TOut>, IFlowDesigner<TIn, TOut>, ISinkDesigner<TIn, TOut>, ISinkDesignerIfElse<TIn, TOut>
     {
-        private readonly ILogger<StreamBuilder> _logger;
-        private readonly XClient _xClient;
+        private readonly ILogger<StreamBuilder<TIn, TOut>> _logger;
+        private readonly IXClient _xClient;
         private readonly string _streamName;
+        private readonly StreamSettings _streamSettings;
 
-        private Producer<object> producerStream;
-        private Consumer<object> consumerStream;
+        private Producer<object, TOut> producerStream;
+        private Producer<object, TOut> producerStreamElse;
+        private IConsumer<object, TIn> consumerStream;
 
-        private Func<object, object> _funcMapper;
+        private Func<Message<TIn>, TOut> _funcMapper;
+        private Func<Message<TIn>, TOut> _funcMapperIfTrue;
+        private Func<Message<TIn>, TOut> _funcMapperIfFalse;
 
-        private StreamBuilder(XClient xClient, string streamName)
+        private IFlowDesigner<TIn, TOut>.Condition _condition;
+
+        private MapFunctionCall mapFunctionCall;
+
+        private StreamBuilder(IXClient xClient, string streamName, StreamSettings streamSettings)
         {
             _xClient = xClient;
             _streamName = streamName;
-            _logger = xClient.GetClientConfiguration().Logging.GetLoggerFactory().CreateLogger<StreamBuilder>();
+            _streamSettings = streamSettings;
+
+            _logger = xClient
+                .GetClientConfiguration().Settings.Logging
+                .GetLoggerFactory()
+                .CreateLogger<StreamBuilder<TIn, TOut>>();
         }
 
-        public static StreamBuilder CreateNewStreamBuilder(IXClientFactory xClientFactory, string streamName)
+        public static StreamBuilder<TIn, TOut> CreateNewStream(IXClientFactory xClientFactory, string streamName, StreamSettings streamSettings = null)
         {
-            return new StreamBuilder(xClientFactory.CreateClient(), streamName);
+            if (streamSettings == null)
+                return new StreamBuilder<TIn, TOut>(xClientFactory.CreateClient(), streamName, new StreamSettings());
+            else
+                return new StreamBuilder<TIn, TOut>(xClientFactory.CreateClient(), streamName, streamSettings);
         }
-        public static StreamBuilder CreateNewStreamBuilder(XClient xClient, string streamName)
+        public static StreamBuilder<TIn, TOut> CreateNewStream(IXClient xClient, string streamName, StreamSettings streamSettings = null)
         {
-            return new StreamBuilder(xClient, streamName);
+            if (streamSettings == null)
+                return new StreamBuilder<TIn, TOut>(xClient, streamName, new StreamSettings());
+            else
+                return new StreamBuilder<TIn, TOut>(xClient, streamName, streamSettings);
         }
 
-        public IFlowDesigner Stream<TIn>(string component, string topic)
+        public IFlowDesigner<TIn, TOut> Stream(SourceTopic sourceTopic)
         {
-            consumerStream = Consumer<object>
+            consumerStream = Consumer<object, TIn>
                 .CreateNewConsumer(_xClient)
-                .ForComponent(component)
-                .AndTopic(topic)
+                .ForComponent(sourceTopic.Component)
+                .AndTopic(sourceTopic.Topic)
                 .WithName(_streamName)
-                .WithInitialPosition(InitialPosition.Earliest)
-                .AndSubscriptionType(SubscriptionType.Shared)
+                .AndSubscription(subscription =>
+                {
+                    subscription.Name = _streamName;
+                    subscription.Type = _streamSettings.ConsumptionInstanceType;
+                    subscription.Mode = _streamSettings.ConsumptionMode;
+                    subscription.InitialPosition = _streamSettings.ConsumptionInitialPosition;
+                })
                 .Build();
 
-            consumerStream.MessageReceived += ConsumerStream_MessageReceived;
+            consumerStream.MessageReceivedHandler((key, message) =>
+            {
+                try
+                {
+                    switch (mapFunctionCall)
+                    {
+                        case MapFunctionCall.Map:
+                            ExecuteMapFunction(key, message);
+                            break;
+                        case MapFunctionCall.MapIf:
+                            ExecuteMapIfFunction(key, message);
+
+                            break;
+                        case MapFunctionCall.MapIfElse:
+                            ExecuteMapIfElseFunction(key, message);
+                            break;
+                        default:
+                            break;
+                    }
+                }
+                catch (Exception)
+                {
+                    (consumerStream as Consumer<object, TIn>).UnacknowledgeMessage(message);
+                }
+            });
 
             return this;
         }
 
-        public ISinkDesigner Map<TIn, TOut>(Func<TIn, TOut> filterFunction)
+        public ISinkDesigner<TIn, TOut> Map(Func<Message<TIn>, TOut> filterFunction)
         {
-            _funcMapper = filterFunction as Func<object, object>;
+            mapFunctionCall = MapFunctionCall.Map;
+
+            _funcMapper = filterFunction;
             return this;
         }
 
-        public IStreamBuilder To<TOut>(string component, string topic)
+        public ISinkDesigner<TIn, TOut> MapIf(IFlowDesigner<TIn, TOut>.Condition condition, Func<Message<TIn>, TOut> filterFunction)
         {
-            producerStream = Producer<object>
+            mapFunctionCall = MapFunctionCall.MapIf;
+
+            _funcMapperIfTrue = filterFunction;
+            _condition = condition;
+
+            return this;
+        }
+
+        public ISinkDesignerIfElse<TIn, TOut> MapIf(IFlowDesigner<TIn, TOut>.Condition condition, Func<Message<TIn>, TOut> filterFunctionIfTrue, Func<Message<TIn>, TOut> filterFunctionIfFalse)
+        {
+            mapFunctionCall = MapFunctionCall.MapIfElse;
+
+            _funcMapperIfTrue = filterFunctionIfTrue;
+            _funcMapperIfFalse = filterFunctionIfFalse;
+
+            _condition = condition;
+
+            return this;
+        }
+
+        public IStreamBuilder<TIn, TOut> To(SinkTopic sinkTopic)
+        {
+            producerStream = Producer<object, TOut>
                 .CreateNewProducer(_xClient)
-                .ForComponent(component)
-                .AndTopic(topic)
+                .ForComponent(sinkTopic.Component)
+                .AndTopic(sinkTopic.Topic)
                 .WithName(_streamName)
-                .RetryProducingIfFails()
-                .AddDefaultHeader("stream-version", "andyx-streams v2.1")
+                .WithSettings(settings =>
+                {
+                    settings.RequireCallback = _streamSettings.RequireCallbackInSink;
+                })
+                .AddDefaultHeader("stream-version", "andyx-streams v3.0.0")
                 .Build();
 
             return this;
         }
 
-        private bool ConsumerStream_MessageReceived(object sender, Client.Events.Consumers.MessageReceivedArgs<object> e)
+        public IStreamBuilder<TIn, TOut> To(SinkTopic sinkTopicTrue, SinkTopic sinkTopicElse)
         {
-            try
-            {
-                var mapped = _funcMapper(e.GenericPayload);
-                producerStream.Produce(mapped);
-                return true;
-            }
-            catch (Exception)
-            {
-                return false;
-            }
+            producerStream = Producer<object, TOut>
+                .CreateNewProducer(_xClient)
+                .ForComponent(sinkTopicTrue.Component)
+                .AndTopic(sinkTopicTrue.Topic)
+                .WithName(_streamName)
+                .WithSettings(settings =>
+                {
+                    settings.RequireCallback = _streamSettings.RequireCallbackInSink;
+                })
+                .AddDefaultHeader("stream-version", "andyx-streams v3.0.0")
+                .Build();
+
+            producerStreamElse = Producer<object, TOut>
+                .CreateNewProducer(_xClient)
+                .ForComponent(sinkTopicElse.Component)
+                .AndTopic(sinkTopicElse.Topic)
+                .WithName(_streamName)
+                .WithSettings(settings =>
+                {
+                    settings.RequireCallback = _streamSettings.RequireCallbackInSink;
+                })
+                .AddDefaultHeader("stream-version", "andyx-streams v3.0.0")
+                .Build();
+
+            return this;
         }
 
-        public Stream Run()
+        public Stream<TIn, TOut> Run()
         {
-            producerStream.OpenAsync().Wait();
-            consumerStream.ConnectAsync().Wait();
+            producerStream
+                .OpenAsync()
+                .Wait();
 
-            return new Stream();
+            if (producerStreamElse != null)
+            {
+                producerStreamElse
+                    .OpenAsync()
+                    .Wait();
+            }
+
+            consumerStream
+                .SubscribeAsync()
+                .Wait();
+
+            return new Stream<TIn, TOut>();
+        }
+
+
+        private void ExecuteMapFunction(object key, Message<TIn> message)
+        {
+            var mapped = _funcMapper(message);
+            producerStream.SendAsync(key, mapped);
+            (consumerStream as Consumer<object, TIn>).AcknowledgeMessage(message);
+        }
+        private void ExecuteMapIfFunction(object key, Message<TIn> message)
+        {
+            if (_condition(message.Payload) == true)
+            {
+                var mapped = _funcMapperIfTrue(message);
+                producerStream.SendAsync(key, mapped);
+                (consumerStream as Consumer<object, TIn>).AcknowledgeMessage(message);
+            }
+            else
+            {
+                (consumerStream as Consumer<object, TIn>).SkipMessage(message);
+            }
+        }
+        private void ExecuteMapIfElseFunction(object key, Message<TIn> message)
+        {
+            if (_condition(message.Payload) == true)
+            {
+                var mapped = _funcMapperIfTrue(message);
+                producerStream.SendAsync(key, mapped);
+                (consumerStream as Consumer<object, TIn>).AcknowledgeMessage(message);
+            }
+            else
+            {
+                var mapped = _funcMapperIfFalse(message);
+                producerStream.SendAsync(key, mapped);
+                (consumerStream as Consumer<object, TIn>).AcknowledgeMessage(message);
+            }
         }
     }
 }
