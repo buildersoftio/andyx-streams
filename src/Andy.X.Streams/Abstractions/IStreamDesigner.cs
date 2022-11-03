@@ -1,7 +1,7 @@
 ﻿namespace Andy.X.Streams.Abstractions
 {
-    public interface IStreamDesigner
+    public interface IStreamDesigner<TIn, TOut>
     {
-        public IFlowDesigner Stream<TIn>(string component, string topic);
+        public IFlowDesigner<TIn, TOut> Stream(SourceTopic sourceTopic);
     }
 }
