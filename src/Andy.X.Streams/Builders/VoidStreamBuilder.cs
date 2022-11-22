@@ -6,9 +6,9 @@ using Andy.X.Client.Models;
 using Andy.X.Streams.Abstractions;
 using Andy.X.Streams.Models.Internal;
 using Andy.X.Streams.Settings;
-using MessagePack;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Threading;
 
 namespace Andy.X.Streams.Builders
 {
@@ -139,6 +139,8 @@ namespace Andy.X.Streams.Builders
             consumerStream
                 .SubscribeAsync()
                 .Wait();
+
+            Thread.Sleep(500);
 
             return new Stream<TIn>();
         }
