@@ -185,16 +185,21 @@ namespace Andy.X.Streams.Builders
                 .OpenAsync()
                 .Wait();
 
+            Thread.Sleep(500);
+
             if (producerStreamElse != null)
             {
                 producerStreamElse
                     .OpenAsync()
                     .Wait();
+                Thread.Sleep(500);
             }
 
             consumerStream
                 .SubscribeAsync()
                 .Wait();
+
+            Thread.Sleep(500);
 
             return new Stream<TIn, TOut>();
         }
