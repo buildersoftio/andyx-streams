@@ -25,7 +25,6 @@ Andy X Streams is focused on the formulation of transformations on data streams.
 		<PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
 		<RepositoryType></RepositoryType>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
-		<PackageReleaseNotes>Added support for Andy X v3</PackageReleaseNotes>
 	</PropertyGroup>
 
 	<ItemGroup>

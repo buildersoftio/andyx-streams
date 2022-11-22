@@ -1,7 +1,7 @@
 ﻿namespace Andy.X.Streams.Abstractions
 {
-    public interface IStreamBuilder
+    public interface IStreamBuilder<TIn, TOut>
     {
-        public Stream Run();
+        public Stream<TIn, TOut> Run();
     }
 }
