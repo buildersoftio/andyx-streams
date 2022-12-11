@@ -6,6 +6,7 @@ using Andy.X.Client.Models;
 using Andy.X.Streams.Abstractions;
 using Andy.X.Streams.Models.Internal;
 using Andy.X.Streams.Settings;
+using MessagePack;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Threading;
@@ -30,6 +31,7 @@ namespace Andy.X.Streams.Builders
         private IFlowDesigner<TIn, TOut>.Condition _condition;
 
         private MapFunctionCall mapFunctionCall;
+        private StreamType streamType;
 
         private StreamBuilder(IXClient xClient, string streamName, StreamSettings streamSettings)
         {
@@ -41,6 +43,8 @@ namespace Andy.X.Streams.Builders
                 .GetClientConfiguration().Settings.Logging
                 .GetLoggerFactory()
                 .CreateLogger<StreamBuilder<TIn, TOut>>();
+
+            streamType = StreamType.None;
         }
 
         public static StreamBuilder<TIn, TOut> CreateNewStream(IXClientFactory xClientFactory, string streamName, StreamSettings streamSettings = null)
@@ -78,21 +82,30 @@ namespace Andy.X.Streams.Builders
             {
                 try
                 {
-                    switch (mapFunctionCall)
+                    if (streamType == StreamType.Map)
                     {
-                        case MapFunctionCall.Map:
-                            ExecuteMapFunction(key, message);
-                            break;
-                        case MapFunctionCall.MapIf:
-                            ExecuteMapIfFunction(key, message);
+                        switch (mapFunctionCall)
+                        {
+                            case MapFunctionCall.Map:
+                                ExecuteMapFunction(key, message);
+                                break;
+                            case MapFunctionCall.MapIf:
+                                ExecuteMapIfFunction(key, message);
 
-                            break;
-                        case MapFunctionCall.MapIfElse:
-                            ExecuteMapIfElseFunction(key, message);
-                            break;
-                        default:
-                            break;
+                                break;
+                            case MapFunctionCall.MapIfElse:
+                                ExecuteMapIfElseFunction(key, message);
+                                break;
+                            default:
+                                break;
+                        }
                     }
+                    else
+                    {
+                        // stream type is Filter
+                        ExecuteFilterFunction(key, message);
+                    }
+
                 }
                 catch (Exception)
                 {
@@ -106,6 +119,7 @@ namespace Andy.X.Streams.Builders
         public ISinkDesigner<TIn, TOut> Map(Func<Message<TIn>, TOut> filterFunction)
         {
             mapFunctionCall = MapFunctionCall.Map;
+            streamType = StreamType.Map;
 
             _funcMapper = filterFunction;
             return this;
@@ -114,6 +128,7 @@ namespace Andy.X.Streams.Builders
         public ISinkDesigner<TIn, TOut> MapIf(IFlowDesigner<TIn, TOut>.Condition condition, Func<Message<TIn>, TOut> filterFunction)
         {
             mapFunctionCall = MapFunctionCall.MapIf;
+            streamType = StreamType.Map;
 
             _funcMapperIfTrue = filterFunction;
             _condition = condition;
@@ -124,6 +139,7 @@ namespace Andy.X.Streams.Builders
         public ISinkDesignerIfElse<TIn, TOut> MapIf(IFlowDesigner<TIn, TOut>.Condition condition, Func<Message<TIn>, TOut> filterFunctionIfTrue, Func<Message<TIn>, TOut> filterFunctionIfFalse)
         {
             mapFunctionCall = MapFunctionCall.MapIfElse;
+            streamType = StreamType.Map;
 
             _funcMapperIfTrue = filterFunctionIfTrue;
             _funcMapperIfFalse = filterFunctionIfFalse;
@@ -144,7 +160,7 @@ namespace Andy.X.Streams.Builders
                 {
                     settings.RequireCallback = _streamSettings.RequireCallbackInSink;
                 })
-                .AddDefaultHeader("stream-version", "andyx-streams v3.0.0")
+                .AddDefaultHeader("stream-version", "andyx-streams v3.1.0")
                 .Build();
 
             return this;
@@ -161,7 +177,7 @@ namespace Andy.X.Streams.Builders
                 {
                     settings.RequireCallback = _streamSettings.RequireCallbackInSink;
                 })
-                .AddDefaultHeader("stream-version", "andyx-streams v3.0.0")
+                .AddDefaultHeader("stream-version", "andyx-streams v3.1.0")
                 .Build();
 
             producerStreamElse = Producer<object, TOut>
@@ -173,7 +189,7 @@ namespace Andy.X.Streams.Builders
                 {
                     settings.RequireCallback = _streamSettings.RequireCallbackInSink;
                 })
-                .AddDefaultHeader("stream-version", "andyx-streams v3.0.0")
+                .AddDefaultHeader("stream-version", "andyx-streams v3.1.0")
                 .Build();
 
             return this;
@@ -181,6 +197,15 @@ namespace Andy.X.Streams.Builders
 
         public Stream<TIn, TOut> Run()
         {
+            // if is filter
+            if (streamType == StreamType.Filter)
+            {
+                if (typeof(TIn) != typeof(TOut))
+                {
+                    throw new Exception("Input type and Output type should be the same.");
+                }
+            }
+
             producerStream
                 .OpenAsync()
                 .Wait();
@@ -211,6 +236,7 @@ namespace Andy.X.Streams.Builders
             producerStream.SendAsync(key, mapped);
             (consumerStream as Consumer<object, TIn>).AcknowledgeMessage(message);
         }
+
         private void ExecuteMapIfFunction(object key, Message<TIn> message)
         {
             if (_condition(message.Payload) == true)
@@ -238,6 +264,23 @@ namespace Andy.X.Streams.Builders
                 producerStream.SendAsync(key, mapped);
                 (consumerStream as Consumer<object, TIn>).AcknowledgeMessage(message);
             }
+        }
+
+        private void ExecuteFilterFunction(object key, Message<TIn> message)
+        {
+            if (_condition(message.Payload) == true)
+            {
+                producerStream.SendAsync(key, (message as Message<TOut>).Payload);
+                (consumerStream as Consumer<object, TIn>).AcknowledgeMessage(message);
+            }
+        }
+
+        public ISinkDesigner<TIn, TOut> Filter(IFlowDesigner<TIn, TOut>.Condition filterCondition)
+        {
+            streamType = StreamType.Filter;
+            _condition = filterCondition;
+
+            return this;
         }
     }
 }

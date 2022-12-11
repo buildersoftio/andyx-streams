@@ -6,4 +6,11 @@
         MapIf,
         MapIfElse
     }
+
+    internal enum StreamType
+    {
+        None,
+        Map,
+        Filter
+    }
 }
