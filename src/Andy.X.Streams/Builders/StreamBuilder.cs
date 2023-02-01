@@ -6,7 +6,6 @@ using Andy.X.Client.Models;
 using Andy.X.Streams.Abstractions;
 using Andy.X.Streams.Models.Internal;
 using Andy.X.Streams.Settings;
-using MessagePack;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Threading;
@@ -75,6 +74,11 @@ namespace Andy.X.Streams.Builders
                     subscription.Type = _streamSettings.ConsumptionInstanceType;
                     subscription.Mode = _streamSettings.ConsumptionMode;
                     subscription.InitialPosition = _streamSettings.ConsumptionInitialPosition;
+                })
+                .WithSettings(settings =>
+                {
+                    if (_streamSettings.CustomMessageSerializer != null)
+                        settings.AddCustomMessageSerializer(_streamSettings.CustomMessageSerializer);
                 })
                 .Build();
 
@@ -176,8 +180,11 @@ namespace Andy.X.Streams.Builders
                 .WithSettings(settings =>
                 {
                     settings.RequireCallback = _streamSettings.RequireCallbackInSink;
+
+                    if (_streamSettings.CustomMessageSerializer != null)
+                        settings.AddCustomMessageSerializer(_streamSettings.CustomMessageSerializer);
                 })
-                .AddDefaultHeader("stream-version", "andyx-streams v3.1.0")
+                .AddDefaultHeader("stream-version", "andyx-streams v3.0.1")
                 .Build();
 
             producerStreamElse = Producer<object, TOut>
@@ -188,8 +195,11 @@ namespace Andy.X.Streams.Builders
                 .WithSettings(settings =>
                 {
                     settings.RequireCallback = _streamSettings.RequireCallbackInSink;
+
+                    if (_streamSettings.CustomMessageSerializer != null)
+                        settings.AddCustomMessageSerializer(_streamSettings.CustomMessageSerializer);
                 })
-                .AddDefaultHeader("stream-version", "andyx-streams v3.1.0")
+                .AddDefaultHeader("stream-version", "andyx-streams v3.0.1")
                 .Build();
 
             return this;
