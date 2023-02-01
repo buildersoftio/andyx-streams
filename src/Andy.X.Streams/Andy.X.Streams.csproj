@@ -3,8 +3,8 @@
 	<PropertyGroup>
 		<TargetFrameworks>net7.0;net6.0</TargetFrameworks>
 
-		<AssemblyVersion>3.1.0</AssemblyVersion>
-		<FileVersion>3.1.0</FileVersion>
+		<AssemblyVersion>3.0.1</AssemblyVersion>
+		<FileVersion>3.0.1</FileVersion>
 		<Product>Buildersoft Andy X</Product>
 		<Company>Buildersoft</Company>
 		<Authors>Buildersoft</Authors>
@@ -16,7 +16,7 @@ Andy X Streams is focused on the formulation of transformations on data streams.
 		<RepositoryUrl>https://github.com/buildersoftdev/andyx-streams</RepositoryUrl>
 		<PackageTags>reactive andyx eda streams</PackageTags>
 
-		<Version>3.1.0</Version>
+		<Version>3.0.1</Version>
 		<PackageLicenseFile>license.md</PackageLicenseFile>
 		<PackageIcon>andyx.png</PackageIcon>
 		<PackageId>Buildersoft.Andy.X.Streams</PackageId>
@@ -44,7 +44,7 @@ Andy X Streams is focused on the formulation of transformations on data streams.
 	</ItemGroup>
 
 	<ItemGroup>
-	  <PackageReference Include="Buildersoft.Andy.X.Client" Version="3.0.0" />
+	  <PackageReference Include="Buildersoft.Andy.X.Client" Version="3.0.1" />
 	  <PackageReference Include="Cortex.Collections" Version="1.0.0-preview11" />
 	</ItemGroup>
 

@@ -69,6 +69,11 @@ namespace Andy.X.Streams.Builders
                     subscription.Mode = _streamSettings.ConsumptionMode;
                     subscription.InitialPosition = _streamSettings.ConsumptionInitialPosition;
                 })
+                .WithSettings(settings =>
+                {
+                    if (_streamSettings.CustomMessageSerializer != null)
+                        settings.AddCustomMessageSerializer(_streamSettings.CustomMessageSerializer);
+                })
                 .Build();
 
             consumerStream.MessageReceivedHandler((key, message) =>
