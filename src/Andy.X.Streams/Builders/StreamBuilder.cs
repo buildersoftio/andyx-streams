@@ -144,7 +144,7 @@ namespace Andy.X.Streams.Builders
                 {
                     settings.RequireCallback = _streamSettings.RequireCallbackInSink;
                 })
-                .AddDefaultHeader("stream-version", "andyx-streams v3.0.3")
+                .AddDefaultHeader("stream-version", "andyx-streams v3.0.4")
                 .Build();
 
             return this;
@@ -161,7 +161,7 @@ namespace Andy.X.Streams.Builders
                 {
                     settings.RequireCallback = _streamSettings.RequireCallbackInSink;
                 })
-                .AddDefaultHeader("stream-version", "andyx-streams v3.0.3")
+                .AddDefaultHeader("stream-version", "andyx-streams v3.0.4")
                 .Build();
 
             producerStreamElse = Producer<object, TOut>
@@ -173,7 +173,7 @@ namespace Andy.X.Streams.Builders
                 {
                     settings.RequireCallback = _streamSettings.RequireCallbackInSink;
                 })
-                .AddDefaultHeader("stream-version", "andyx-streams v3.0.3")
+                .AddDefaultHeader("stream-version", "andyx-streams v3.0.4")
                 .Build();
 
             return this;
@@ -185,21 +185,21 @@ namespace Andy.X.Streams.Builders
                 .OpenAsync()
                 .Wait();
 
-            Thread.Sleep(500);
+            Thread.Sleep(1000);
 
             if (producerStreamElse != null)
             {
                 producerStreamElse
                     .OpenAsync()
                     .Wait();
-                Thread.Sleep(500);
+                Thread.Sleep(1000);
             }
 
             consumerStream
                 .SubscribeAsync()
                 .Wait();
 
-            Thread.Sleep(500);
+            Thread.Sleep(1000);
 
             return new Stream<TIn, TOut>();
         }
