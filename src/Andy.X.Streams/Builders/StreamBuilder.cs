@@ -144,7 +144,7 @@ namespace Andy.X.Streams.Builders
                 {
                     settings.RequireCallback = _streamSettings.RequireCallbackInSink;
                 })
-                .AddDefaultHeader("stream-version", "andyx-streams v3.0.0")
+                .AddDefaultHeader("stream-version", "andyx-streams v3.0.3")
                 .Build();
 
             return this;
@@ -161,7 +161,7 @@ namespace Andy.X.Streams.Builders
                 {
                     settings.RequireCallback = _streamSettings.RequireCallbackInSink;
                 })
-                .AddDefaultHeader("stream-version", "andyx-streams v3.0.0")
+                .AddDefaultHeader("stream-version", "andyx-streams v3.0.3")
                 .Build();
 
             producerStreamElse = Producer<object, TOut>
@@ -173,7 +173,7 @@ namespace Andy.X.Streams.Builders
                 {
                     settings.RequireCallback = _streamSettings.RequireCallbackInSink;
                 })
-                .AddDefaultHeader("stream-version", "andyx-streams v3.0.0")
+                .AddDefaultHeader("stream-version", "andyx-streams v3.0.3")
                 .Build();
 
             return this;
